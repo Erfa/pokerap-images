@@ -2,13 +2,15 @@ import urllib
 import urllib2
 import cStringIO
 import json
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 
 opener = urllib2.build_opener()
 opener.addheaders = [('User-Agent', 'Pokemon')]
 
 bg = Image.open('bg.png')
+
+nameFont = ImageFont.truetype('arial.ttf', 128)
 
 def parse_pokemon(filename):
 	with open(filename) as f:
@@ -29,11 +31,22 @@ def get_pokemon_image(url):
 	width = height * img.width / img.height
 	return img.resize([width, height], Image.BICUBIC)
 
-if __name__ == '__main__':
-	pokemon = parse_pokemon('pokemon.txt')
-	url = get_pokemon_image_url(pokemon[0])
+def build_pokemon_image(pokemon):
+	url = get_pokemon_image_url(pokemon)
 	img = get_pokemon_image(url)
 
-	bg.paste(img, [int(0.5 * bg.width - 0.5 * img.width), int(0.6 * bg.height - 0.5 * img.height)], img)
+	result = bg.copy()
+	result.paste(img, [int(0.5 * bg.width - 0.5 * img.width), int(0.6 * bg.height - 0.5 * img.height)], img)
 
-	bg.save('out.png')
+	nameSize = nameFont.getsize(pokemon)
+	draw = ImageDraw.Draw(result)
+	draw.text([int(0.5 * bg.width - 0.5 * nameSize[0]), 0.2 * bg.height - nameSize[1]], pokemon, font=nameFont)
+
+	return result
+
+if __name__ == '__main__':
+	pokemon = parse_pokemon('pokemon.txt')
+
+	img = build_pokemon_image(pokemon[0])
+
+	img.save('out.png')
