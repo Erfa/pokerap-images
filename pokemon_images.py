@@ -19,14 +19,14 @@ bg = Image.open('bg.png')
 progressEmpty = Image.open('progress_empty.png')
 progressFull = Image.open('progress_full.png')
 
-font_size = 100
+font_size = 128
 nameFont = ImageFont.truetype('arial.ttf', font_size)
 
 def parse_pokemon(filename):
 	with open(filename) as f:
 		lines = f.readlines()
 
-	content = u','.join(lines)
+	content = u','.join([l.decode('utf-8') for l in lines])
 	return [pokemon.strip() for pokemon in content.split(',')]
 
 def open_url(url):
@@ -40,31 +40,19 @@ def resize_to_height(img, height):
 	width = height * img.width / img.height
 	return img.resize([width, height], Image.BICUBIC)
 
-def get_nidoran_image():
-	female = Image.open(open_url(get_pokemon_image_url(29)))
-	male = Image.open(open_url(get_pokemon_image_url(32)))
-
-	female = resize_to_height(female, 400).transpose(Image.FLIP_LEFT_RIGHT)
-	male = resize_to_height(male, 400)
-
-	result = Image.new('RGBA', [female.width + male.width, 400])
-
-	result.paste(female, [0, 0], female)
-	result.paste(male, [female.width, 0], male)
-
-	return result
-
 def get_pokemon_image_url(poke_id):
 	return u'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other-sprites/official-artwork/{}.png'.format(poke_id)
 
+def safe_name(name):
+	name = name.lower()
+	name = re.sub(r'\s*\'\s*', '', name)
+	name = re.sub(r'\s*\.\s*', '-', name)
+	name = name.replace(u' ♀', '-f')
+	name = name.replace(u' ♂', '-m')
+	return name
+
 def get_pokemon_image(pokemon):
-	if pokemon.lower() == 'nidoran':
-		return get_nidoran_image()
-
-	pokemon = pokemon.lower()
-	pokemon = re.sub(r'\s*\'\s*', '', pokemon)
-	pokemon = re.sub(r'\s*\.\s*', '-', pokemon)
-
+	pokemon = safe_name(pokemon)
 	url = u'http://pokeapi.co/api/v2/pokemon/{}/'.format(pokemon)
 
 	response = open_url(url)
@@ -81,14 +69,9 @@ def build_pokemon_image(pokemon, progress):
 	result = bg.copy()
 	result.paste(img, [int(0.5 * bg.width - 0.5 * img.width), int(0.45 * bg.height - 0.5 * img.height)], img)
 
-	if pokemon == 'Nidoran':
-		name = u'Nidoran ♀ / Nidoran ♂'
-	else:
-		name = pokemon
-
-	nameSize = nameFont.getsize(name)
+	nameSize = nameFont.getsize(pokemon)
 	draw = ImageDraw.Draw(result)
-	draw.text([int(0.5 * bg.width - 0.5 * nameSize[0]), 0.9 * bg.height - font_size], name, font=nameFont)
+	draw.text([int(0.5 * bg.width - 0.5 * nameSize[0]), 0.9 * bg.height - font_size], pokemon, font=nameFont)
 
 	result.paste(
 		progressEmpty,
@@ -109,8 +92,8 @@ def build_pokemon_image(pokemon, progress):
 def worker(n_total, data):
 	i, pokemon = data
 	img = build_pokemon_image(data[1], float(i + 1) / n_total)
-	img.save('output/{0:04d}_{1}.png'.format(i, pokemon))
-	print pokemon
+	img.save(u'output/{0:04d}_{1}.png'.format(i, safe_name(data[1])))
+	print safe_name(data[1])
 
 if __name__ == '__main__':
 	pokemon = parse_pokemon('pokemon.txt')

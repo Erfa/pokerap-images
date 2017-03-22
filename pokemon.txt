@@ -1,4 +1,4 @@
-Electrode, Diglett, Nidoran, Mankey
+Electrode, Diglett, Nidoran ♀, Mankey
 Venusaur, Rattata, Fearow, Pidgey
 Seaking, Jolteon, Dragonite, Gastly
 Ponyta, Vaporeon, Poliwrath, Butterfree
@@ -20,7 +20,7 @@ Blastoise, Poliwhirl, Oddish, Drowzee
 Raichu, Nidoqueen, Bellsprout, Starmie
 Metapod, Marowak, Kakuna, Clefairy
 Dodrio, Seadra, Vileplume, Krabby
-Lickitung, Tauros, Weedle, Nidoran
+Lickitung, Tauros, Weedle, Nidoran ♂
 Machop, Shellder, Porygon, Hitmonchan
 Articuno, Jynx, Nidorina, Beedrill
 Haunter, Squirtle, Chansey
