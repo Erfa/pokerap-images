@@ -3,6 +3,9 @@ import urllib2
 import cStringIO
 import json
 from PIL import Image, ImageDraw, ImageFont
+from multiprocessing import Pool
+from functools import partial
+import re
 
 
 opener = urllib2.build_opener()
@@ -23,13 +26,31 @@ def parse_pokemon(filename):
 	return [pokemon.strip() for pokemon in content.split(',')]
 
 def get_pokemon_image_url(pokemon):
-	url = u'http://pokeapi.co/api/v2/pokemon/{}/'.format(pokemon.lower())
-	response = opener.open(url)
-	data = json.load(response)
+	if pokemon.lower() == 'nidoran':
+		pokemon = 'nidoran-f'
+
+	pokemon = pokemon.lower()
+	pokemon = re.sub(r'\s*\'\s*', '', pokemon)
+	pokemon = re.sub(r'\s*\.\s*', '-', pokemon)
+
+	url = u'http://pokeapi.co/api/v2/pokemon/{}/'.format(pokemon)
+
+	try:
+		response = opener.open(url)
+		data = json.load(response)
+	except urllib2.HTTPError:
+		print 'Error with url ' + url
+		raise
+
 	return u'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other-sprites/official-artwork/{}.png'.format(data['id'])
 
 def get_pokemon_image(url):
-	img = Image.open(opener.open(url))
+	try:
+		img = Image.open(opener.open(url))
+	except urllib2.HTTPError:
+		print 'Error with url ' + url
+		raise
+
 	height = 400
 	width = height * img.width / img.height
 	return img.resize([width, height], Image.BICUBIC)
@@ -61,9 +82,14 @@ def build_pokemon_image(pokemon, progress):
 
 	return result
 
+def worker(n_total, data):
+	i, pokemon = data
+	img = build_pokemon_image(data[1], float(i + 1) / n_total)
+	img.save('output/{0:04d}_{1}.png'.format(i, pokemon))
+	print pokemon
+
 if __name__ == '__main__':
 	pokemon = parse_pokemon('pokemon.txt')
 
-	img = build_pokemon_image(pokemon[0], 0.3)
-
-	img.save('out.png')
+	p = Pool(16)
+	p.map(partial(worker, len(pokemon)), enumerate(pokemon))
