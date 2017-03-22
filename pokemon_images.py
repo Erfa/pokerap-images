@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import urllib
 import urllib2
 import cStringIO
@@ -16,7 +19,8 @@ bg = Image.open('bg.png')
 progressEmpty = Image.open('progress_empty.png')
 progressFull = Image.open('progress_full.png')
 
-nameFont = ImageFont.truetype('arial.ttf', 128)
+font_size = 100
+nameFont = ImageFont.truetype('arial.ttf', font_size)
 
 def parse_pokemon(filename):
 	with open(filename) as f:
@@ -25,9 +29,37 @@ def parse_pokemon(filename):
 	content = u','.join(lines)
 	return [pokemon.strip() for pokemon in content.split(',')]
 
-def get_pokemon_image_url(pokemon):
+def open_url(url):
+	try:
+		return opener.open(url)
+	except urllib2.HTTPError:
+		print 'Error with url ' + url
+		raise
+
+def resize_to_height(img, height):
+	width = height * img.width / img.height
+	return img.resize([width, height], Image.BICUBIC)
+
+def get_nidoran_image():
+	female = Image.open(open_url(get_pokemon_image_url(29)))
+	male = Image.open(open_url(get_pokemon_image_url(32)))
+
+	female = resize_to_height(female, 400).transpose(Image.FLIP_LEFT_RIGHT)
+	male = resize_to_height(male, 400)
+
+	result = Image.new('RGBA', [female.width + male.width, 400])
+
+	result.paste(female, [0, 0], female)
+	result.paste(male, [female.width, 0], male)
+
+	return result
+
+def get_pokemon_image_url(poke_id):
+	return u'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other-sprites/official-artwork/{}.png'.format(poke_id)
+
+def get_pokemon_image(pokemon):
 	if pokemon.lower() == 'nidoran':
-		pokemon = 'nidoran-f'
+		return get_nidoran_image()
 
 	pokemon = pokemon.lower()
 	pokemon = re.sub(r'\s*\'\s*', '', pokemon)
@@ -35,36 +67,28 @@ def get_pokemon_image_url(pokemon):
 
 	url = u'http://pokeapi.co/api/v2/pokemon/{}/'.format(pokemon)
 
-	try:
-		response = opener.open(url)
-		data = json.load(response)
-	except urllib2.HTTPError:
-		print 'Error with url ' + url
-		raise
+	response = open_url(url)
+	data = json.load(response)
 
-	return u'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other-sprites/official-artwork/{}.png'.format(data['id'])
+	url = get_pokemon_image_url(data['id'])
+	img = Image.open(open_url(url))
 
-def get_pokemon_image(url):
-	try:
-		img = Image.open(opener.open(url))
-	except urllib2.HTTPError:
-		print 'Error with url ' + url
-		raise
-
-	height = 400
-	width = height * img.width / img.height
-	return img.resize([width, height], Image.BICUBIC)
+	return resize_to_height(img, 400)
 
 def build_pokemon_image(pokemon, progress):
-	url = get_pokemon_image_url(pokemon)
-	img = get_pokemon_image(url)
+	img = get_pokemon_image(pokemon)
 
 	result = bg.copy()
 	result.paste(img, [int(0.5 * bg.width - 0.5 * img.width), int(0.45 * bg.height - 0.5 * img.height)], img)
 
-	nameSize = nameFont.getsize(pokemon)
+	if pokemon == 'Nidoran':
+		name = u'Nidoran ♀ / Nidoran ♂'
+	else:
+		name = pokemon
+
+	nameSize = nameFont.getsize(name)
 	draw = ImageDraw.Draw(result)
-	draw.text([int(0.5 * bg.width - 0.5 * nameSize[0]), 0.9 * bg.height - nameSize[1]], pokemon, font=nameFont)
+	draw.text([int(0.5 * bg.width - 0.5 * nameSize[0]), 0.9 * bg.height - font_size], name, font=nameFont)
 
 	result.paste(
 		progressEmpty,
